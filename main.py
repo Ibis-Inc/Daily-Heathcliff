@@ -10,6 +10,7 @@ from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.firefox.options import Options
 from webdriver_manager.firefox import GeckoDriverManager
 from lxml import html
+import asyncio
 
 load_dotenv()
 
@@ -54,47 +55,69 @@ def save_role_data(data):
 
 role_data = load_role_data()
 
-def obtainHeathcliffSource(url):
+IMAGE_SOURCE_FILE = 'image_sources.json'
 
-    print("beginning process to obtain image source")
-    firefox_options = Options()
-    firefox_options.add_argument("--headless")
+if os.path.exists(IMAGE_SOURCE_FILE):
+    with open(IMAGE_SOURCE_FILE, 'r') as f:
+        image_sources = json.load(f)
+else:
+    image_sources = {}
 
-    driver = webdriver.Firefox(service=Service(GeckoDriverManager().install()), options=firefox_options)
-    print("started driver in headless mode")
+def obtainHeathcliffSource(formatted_date):
 
-    webelements = []
-    src = ''
+    # Check if the date requested is stored in the dictionary
+    datesrc = image_sources.get(formatted_date)
 
-    while src == '':
-        driver.get(url)
-        print("driver got the url")
-        #obtain tree and search for the source which contains the source and filters for it
-        tree = html.fromstring(driver.page_source)
-        print("obtained source")
-        webelements = tree.xpath('/html/body/div/div/div/main/section[2]/div[2]/div/div/div/div/div/div/div/button/img/@src')
-        print("requested to obtain source")
-        src = webelements[0]
-        driver.quit()
-        if src == []:
-            print("failed to obtain source")
-        else:
-            print("source obtained!")
-        print(src)
+    if datesrc:
+        src = datesrc  # Obtain source URL from the dictionary for the date
+        print("Image source obtained from the dictionary.")
+    else:
+        url = f"https://www.gocomics.com/heathcliff/{formatted_date}" #forms the correct url to the page based upon the day
 
-    print("exited while loop successfully")
+        print("beginning process to obtain image source")
+        firefox_options = Options()
+        firefox_options.add_argument("--headless")
+
+        driver = webdriver.Firefox(service=Service(GeckoDriverManager().install()), options=firefox_options)
+        print("started driver in headless mode")
+
+        webelements = []
+        src = ''
+
+        while src == '':
+            driver.get(url)
+            print("driver got the url")
+            #obtain tree and search for the source which contains the source and filters for it
+            tree = html.fromstring(driver.page_source)
+            print("obtained source")
+            webelements = tree.xpath('/html/body/div/div/div/main/section[2]/div[2]/div/div/div/div/div/div/div/button/img/@src')
+            print("requested to obtain source")
+            if webelements:
+                src = webelements[0]  # Assuming there's at least one result
+                print("Source obtained!")
+                
+                # Write date and source URL to the dictionary
+                image_sources[formatted_date] = src
+                
+                # Save the updated dictionary to the JSON file
+                with open(IMAGE_SOURCE_FILE, 'w') as json_file:
+                    json.dump(image_sources, json_file)
+                print("Updated image sources saved to JSON file.")
+            else:
+                print("Failed to obtain source.")
+        #write date and source url to dictionary
+
+        print("exited while loop successfully")
     return src
 
-    
+
 
 
 @tasks.loop(hours=24)
 async def send_daily_message():
     now = datetime.utcnow() #this is depreciated we should probably replace it
     formatted_date = now.strftime("%Y/%m/%d")
-    url = f"https://www.gocomics.com/heathcliff/{formatted_date}" #forms the correct url to the page based upon the day
-
-    imgsrc = obtainHeathcliffSource(url)
+    imgsrc = obtainHeathcliffSource(formatted_date)
     print("obtained source within the 24 hour loop")
 
     for guild_id, channel_id in channel_data.items():
@@ -108,7 +131,7 @@ async def send_daily_message():
 
         try:
             await channel.send(imgsrc)
-            print(f'Sent daily message to {channel.mention}: {imgsrc}, from {url}')
+            print(f'Sent daily message to {channel.mention}: {imgsrc}, from {formatted_date}')
             if role_id:
                 await channel.send(f"<@&{role_id}>")
         except Exception as e:
@@ -148,7 +171,7 @@ async def role(interaction: discord.Interaction, role: discord.Role):
 
 @bot.tree.command(name='reset-role', description='Use it to reset the ping role for the bot (meaning it won\'t send a ping message)')
 @app_commands.checks.has_permissions(manage_channels=True)
-async def sendnow(interaction: discord.Interaction):
+async def resetrole(interaction: discord.Interaction):
     # Reset the role for the current guild
     guild_id = str(interaction.guild.id)
     
@@ -159,30 +182,32 @@ async def sendnow(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("No role has been set for this server to reset.", ephemeral=True)
 
-@bot.tree.command(name='send-now', description='Use it to send today\'s daily Heathcliff comic!')
+@bot.tree.command(name='send-now', description='Use it to send Heathcliff comic (Defaults to today) YYYY/MM/DD')
 @app_commands.checks.has_permissions()
-async def sendnow(interaction: discord.Interaction):
-    now = datetime.utcnow()
-    formatted_date = now.strftime("%Y/%m/%d")
-    url = f"https://www.gocomics.com/heathcliff/{formatted_date}"
-    imgsrc = obtainHeathcliffSource(url)
-    await interaction.response.send_message(imgsrc)
-    print(f'Sent message!')
-
-@bot.tree.command(name='ping-role', description='Use it to ping the correct role')
-@app_commands.checks.has_permissions(manage_channels=True)
-async def ping_role(interaction: discord.Interaction):
-    # Retrieve the role ID from the role_data dictionary
-    role_id = role_data.get(str(interaction.guild.id))  
-    
-    if role_id:
-        role = interaction.guild.get_role(role_id)  
-        if role:
-            await interaction.response.send_message(f'Here is the role: {role.mention}', ephemeral=True)  
-        else:
-            await interaction.response.send_message("The role set for this server no longer exists.", ephemeral=True)
+async def sendnow(interaction: discord.Interaction, date: str = None):
+    # Check for date parameter; default to today if not provided
+    if date is None:
+        now = datetime.utcnow()
+        formatted_date = now.strftime("%Y/%m/%d")
     else:
-        await interaction.response.send_message("No role has been set for this server.", ephemeral=True)
+        await interaction.response.send_message("This may time out. If that happens, wait 10 seconds and try again", ephemeral=True)
+        try:
+            # Try to parse the provided date
+            formatted_date = datetime.strptime(date, "%Y/%m/%d").strftime("%Y/%m/%d")
+        except ValueError:
+            await interaction.response.send_message("Invalid date format. Please use YYYY/MM/DD.")
+            return
+    
+    # Obtain the image source using the formatted date
+    imgsrc = obtainHeathcliffSource(formatted_date)
+    
+    # Send the image source in a message
+    await interaction.followup.send(imgsrc)
+    print(f'Sent message for date: {formatted_date}')
+    
+    # Send the image source in a message
+    await interaction.response.send_message(imgsrc)
+    print(f'Sent message for date: {formatted_date}')
 
 @bot.tree.command(name='see-channel', description='Shows currently assigned channel')
 @app_commands.checks.has_permissions(manage_channels=True)
