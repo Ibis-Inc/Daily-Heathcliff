@@ -6,6 +6,9 @@ from dotenv import load_dotenv
 from datetime import datetime
 import json
 from selenium import webdriver
+from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.firefox.options import Options
+from webdriver_manager.firefox import GeckoDriverManager
 from lxml import html
 
 load_dotenv()
@@ -53,16 +56,33 @@ role_data = load_role_data()
 
 def obtainHeathcliffSource(url):
 
-    #use firefox webdriver
-    driver = webdriver.Firefox() 
-    driver.get(url)
+    print("beginning process to obtain image source")
+    firefox_options = Options()
+    firefox_options.add_argument("--headless")
 
-    #obtain tree and search for the source which contains the source and filters for it
-    tree = html.fromstring(driver.page_source)
-    src = tree.xpath('/html/body/div/div/div/main/section[2]/div[2]/div/div/div/div/div/div/div/button/img/@src')
+    driver = webdriver.Firefox(service=Service(GeckoDriverManager().install()), options=firefox_options)
+    print("started driver in headless mode")
 
-    driver.quit()
+    webelements = []
+    src = ''
 
+    while src == '':
+        driver.get(url)
+        print("driver got the url")
+        #obtain tree and search for the source which contains the source and filters for it
+        tree = html.fromstring(driver.page_source)
+        print("obtained source")
+        webelements = tree.xpath('/html/body/div/div/div/main/section[2]/div[2]/div/div/div/div/div/div/div/button/img/@src')
+        print("requested to obtain source")
+        src = webelements[0]
+        driver.quit()
+        if src == []:
+            print("failed to obtain source")
+        else:
+            print("source obtained!")
+        print(src)
+
+    print("exited while loop successfully")
     return src
 
     
@@ -70,6 +90,13 @@ def obtainHeathcliffSource(url):
 
 @tasks.loop(hours=24)
 async def send_daily_message():
+    now = datetime.utcnow() #this is depreciated we should probably replace it
+    formatted_date = now.strftime("%Y/%m/%d")
+    url = f"https://www.gocomics.com/heathcliff/{formatted_date}" #forms the correct url to the page based upon the day
+
+    imgsrc = obtainHeathcliffSource(url)
+    print("obtained source within the 24 hour loop")
+
     for guild_id, channel_id in channel_data.items():
         channel = bot.get_channel(channel_id)
         
@@ -78,14 +105,10 @@ async def send_daily_message():
             continue  # Skip to the next iteration if the channel is invalid
 
         role_id = role_data.get(str(guild_id))  # Get the role ID for the guild
-        
-        now = datetime.utcnow() #this is depreciated we should probably replace it
-        formatted_date = now.strftime("%Y/%m/%d")
-        url = f"https://www.gocomics.com/heathcliff/{formatted_date}"
-        
+
         try:
-            await channel.send(obtainHeathcliffSource(url))
-            print(f'Sent daily message to {channel.mention}: {url}')
+            await channel.send(imgsrc)
+            print(f'Sent daily message to {channel.mention}: {imgsrc}, from {url}')
             if role_id:
                 await channel.send(f"<@&{role_id}>")
         except Exception as e:
@@ -142,7 +165,8 @@ async def sendnow(interaction: discord.Interaction):
     now = datetime.utcnow()
     formatted_date = now.strftime("%Y/%m/%d")
     url = f"https://www.gocomics.com/heathcliff/{formatted_date}"
-    await interaction.response.send_message(url)
+    imgsrc = obtainHeathcliffSource(url)
+    await interaction.response.send_message(imgsrc)
     print(f'Sent message!')
 
 @bot.tree.command(name='ping-role', description='Use it to ping the correct role')
