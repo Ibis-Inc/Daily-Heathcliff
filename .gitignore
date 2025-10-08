@@ -1,2 +1,4 @@
 .env
 .dsstore
+channel_data.json
+role_data.json
