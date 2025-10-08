@@ -187,7 +187,6 @@ async def resetrole(interaction: discord.Interaction):
 @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True) # all allowed
 @app_commands.checks.has_permissions()
 async def sendnow(interaction: discord.Interaction, date: str = None):
-    min_date = datetime.strptime("2002/01/01", "%Y/%m/%d")
     # Check for date parameter; default to today if not provided
     if date is None:
         now = datetime.utcnow()
@@ -197,10 +196,11 @@ async def sendnow(interaction: discord.Interaction, date: str = None):
         try:
             # Try to parse the provided date
             formatted_date = datetime.strptime(date, "%Y/%m/%d").strftime("%Y/%m/%d")
+            parsed_date = datetime.strptime(date, "%Y/%m/%d")
 
             # Check if the date is prior to the minimum date, since otherwise it will get stuck in a loop
-            if formatted_date < min_date:
-                await interaction.response.send_message("The date must be on or after 2025/01/01.")
+            if parsed_date.year < 2002:
+                await interaction.response.send_message("The year must be 2002 or later. Please use a valid date.", ephemeral=True)
                 return
             
         except ValueError:
