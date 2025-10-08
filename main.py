@@ -183,30 +183,36 @@ async def resetrole(interaction: discord.Interaction):
         await interaction.response.send_message("No role has been set for this server to reset.", ephemeral=True)
 
 @bot.tree.command(name='send-now', description='Use it to send Heathcliff comic (Defaults to today) YYYY/MM/DD')
+@app_commands.allowed_installs(guilds=True, users=True)
+@app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True) # all allowed
 @app_commands.checks.has_permissions()
 async def sendnow(interaction: discord.Interaction, date: str = None):
+    min_date = datetime.strptime("2002/01/01", "%Y/%m/%d")
     # Check for date parameter; default to today if not provided
     if date is None:
         now = datetime.utcnow()
         formatted_date = now.strftime("%Y/%m/%d")
+        await interaction.response.send_message("Sending Heathcliff!")
     else:
-        await interaction.response.send_message("This may time out. If that happens, wait 10 seconds and try again", ephemeral=True)
         try:
             # Try to parse the provided date
             formatted_date = datetime.strptime(date, "%Y/%m/%d").strftime("%Y/%m/%d")
+
+            # Check if the date is prior to the minimum date, since otherwise it will get stuck in a loop
+            if formatted_date < min_date:
+                await interaction.response.send_message("The date must be on or after 2025/01/01.")
+                return
+            
         except ValueError:
             await interaction.response.send_message("Invalid date format. Please use YYYY/MM/DD.")
             return
+        await interaction.response.send_message("Sending Heathcliff!")
     
     # Obtain the image source using the formatted date
     imgsrc = obtainHeathcliffSource(formatted_date)
     
     # Send the image source in a message
     await interaction.followup.send(imgsrc)
-    print(f'Sent message for date: {formatted_date}')
-    
-    # Send the image source in a message
-    await interaction.response.send_message(imgsrc)
     print(f'Sent message for date: {formatted_date}')
 
 @bot.tree.command(name='see-channel', description='Shows currently assigned channel')
