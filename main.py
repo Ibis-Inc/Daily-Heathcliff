@@ -114,7 +114,7 @@ def obtainHeathcliffSource(formatted_date):
         src = datesrc  # Obtain source URL from the dictionary for the date
         print("Image source obtained from the dictionary.")
     else:
-        webRequest(formatted_date)
+        src = webRequest(formatted_date)
     return src
 
 
