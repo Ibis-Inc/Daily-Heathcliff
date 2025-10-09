@@ -14,7 +14,7 @@ from lxml import html
 
 load_dotenv()
 
-TOKEN = os.getenv('TOKEN')  # Use environment variable for the token
+TOKEN = os.getenv('BETA_TOKEN')  # Use environment variable for the token
 
 # Create intents
 intents = discord.Intents.default()
@@ -63,15 +63,8 @@ if os.path.exists(IMAGE_SOURCE_FILE):
 else:
     image_sources = {}
 
-def obtainHeathcliffSource(formatted_date):
-
-    # Check if the date requested is stored in the dictionary
-    datesrc = image_sources.get(formatted_date)
-
-    if datesrc:
-        src = datesrc  # Obtain source URL from the dictionary for the date
-        print("Image source obtained from the dictionary.")
-    else:
+def webRequest(formatted_date):
+        
         url = f"https://www.gocomics.com/heathcliff/{formatted_date}" #forms the correct url to the page based upon the day
 
         print("beginning process to obtain image source")
@@ -108,6 +101,20 @@ def obtainHeathcliffSource(formatted_date):
         #write date and source url to dictionary
 
         print("exited while loop successfully")
+
+        return src
+
+
+def obtainHeathcliffSource(formatted_date):
+
+    # Check if the date requested is stored in the dictionary
+    datesrc = image_sources.get(formatted_date)
+
+    if datesrc:
+        src = datesrc  # Obtain source URL from the dictionary for the date
+        print("Image source obtained from the dictionary.")
+    else:
+        webRequest(formatted_date)
     return src
 
 
@@ -117,7 +124,7 @@ def obtainHeathcliffSource(formatted_date):
 async def send_daily_message():
     now = datetime.utcnow() #this is depreciated we should probably replace it
     formatted_date = now.strftime("%Y/%m/%d")
-    imgsrc = obtainHeathcliffSource(formatted_date)
+    imgsrc = webRequest(formatted_date)
     print("obtained source within the 24 hour loop")
 
     for guild_id, channel_id in channel_data.items():
