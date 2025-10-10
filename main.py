@@ -10,6 +10,10 @@ from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.firefox.options import Options
 from webdriver_manager.firefox import GeckoDriverManager
 from lxml import html
+import schedule
+import time
+import asyncio
+import timedelta
 
 
 load_dotenv()
@@ -143,6 +147,21 @@ async def send_daily_message():
                 await channel.send(f"<@&{role_id}>")
         except Exception as e:
             print(f"Failed to send message to {channel.mention}: {e}")
+
+@send_daily_message.before_loop
+async def before_loop():
+    print("before loop initiate")
+    hour = 13
+    minute = 47
+    await bot.wait_until_ready()
+    print("bot awaited ready")
+    now = datetime.now()
+    future = datetime.datetime(now.year, now.month, now.day, hour, minute)
+    if now.hour >= hour and now.minute > minute:
+        print("not ready yet")
+        future += timedelta(days=1)
+    print("honk shua sleep on that thang sleeping for "+(future-now).seconds)
+    await asyncio.sleep((future-now).seconds)
 
 
 @bot.event
