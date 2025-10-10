@@ -14,6 +14,7 @@ import schedule
 import time
 import asyncio
 import timedelta
+import pause
 
 
 load_dotenv()
@@ -77,11 +78,11 @@ def webRequest(formatted_date):
 
         driver = webdriver.Firefox(service=Service(GeckoDriverManager().install()), options=firefox_options)
         print("started driver in headless mode")
-
+        timeout = 0
         webelements = []
         src = ''
 
-        while src == '':
+        while (src == '' and timeout < 10):
             driver.get(url)
             print("driver got the url")
             #obtain tree and search for the source which contains the source and filters for it
@@ -102,8 +103,10 @@ def webRequest(formatted_date):
                 print("Updated image sources saved to JSON file.")
             else:
                 print("Failed to obtain source.")
+                timeout = timeout + 1
         #write date and source url to dictionary
-
+        if timeout == 10:
+            return "Image request timed out"
         print("exited while loop successfully")
 
         return src
@@ -151,17 +154,13 @@ async def send_daily_message():
 @send_daily_message.before_loop
 async def before_loop():
     print("before loop initiate")
-    hour = 13
-    minute = 47
-    await bot.wait_until_ready()
-    print("bot awaited ready")
-    now = datetime.now()
-    future = datetime.datetime(now.year, now.month, now.day, hour, minute)
-    if now.hour >= hour and now.minute > minute:
-        print("not ready yet")
-        future += timedelta(days=1)
-    print("honk shua sleep on that thang sleeping for "+(future-now).seconds)
-    await asyncio.sleep((future-now).seconds)
+    # Calculate seconds until the next noon
+    seconds_until_noon = (datetime.now().replace(hour=12, minute=0, second=0, microsecond=0) + 
+                          timedelta(days=(datetime.now().hour >= 12)) - datetime.now()).total_seconds()
+    
+    # Pause the script asynchronously
+    print("honk shooah sleep on that thang")
+    await asyncio.sleep(seconds_until_noon)
 
 
 @bot.event
