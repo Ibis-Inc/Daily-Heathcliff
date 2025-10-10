@@ -14,7 +14,7 @@ from lxml import html
 
 load_dotenv()
 
-TOKEN = os.getenv('BETA_TOKEN')  # Use environment variable for the token
+TOKEN = os.getenv('TOKEN')  # Use environment variable for the token
 
 # Create intents
 intents = discord.Intents.default()
