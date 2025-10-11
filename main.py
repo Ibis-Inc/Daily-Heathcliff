@@ -103,8 +103,10 @@ def webRequest(formatted_date):
                 timeout = timeout + 1
         #write date and source url to dictionary
         if timeout == 10:
+            print("request timed out")
             return "Image request timed out"
-        print("exited while loop successfully")
+        else:
+            print("exited while loop successfully")
 
         return src
 
