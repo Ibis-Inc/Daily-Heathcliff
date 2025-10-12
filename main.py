@@ -5,13 +5,12 @@ import os
 from dotenv import load_dotenv
 from datetime import datetime
 import json
-from selenium import webdriver
-from selenium.webdriver.firefox.service import Service
-from selenium.webdriver.firefox.options import Options
-from webdriver_manager.firefox import GeckoDriverManager
 from lxml import html
 import asyncio
 import timedelta
+import asyncio
+import requests
+from playwright.async_api import async_playwright
 
 
 load_dotenv()
@@ -65,50 +64,21 @@ if os.path.exists(IMAGE_SOURCE_FILE):
 else:
     image_sources = {}
 
-def webRequest(formatted_date):
-        
+async def webRequest(formatted_date):
+    async with async_playwright() as p:
         url = f"https://www.gocomics.com/heathcliff/{formatted_date}" #forms the correct url to the page based upon the day
 
         print("beginning process to obtain image source")
-        firefox_options = Options()
-        firefox_options.add_argument("--headless")
+        browser = await p.firefox.launch(headless=True)
+        page = await browser.new_page()
+        await page.goto(url)
 
-        driver = webdriver.Firefox(service=Service(GeckoDriverManager().install()), options=firefox_options)
-        print("started driver in headless mode")
-        timeout = 0
-        webelements = []
-        src = ''
+        await page.wait_for_selector("xpath=/html/body/div/div/div/main/section[2]/div[2]/div/div/div/div/div/div/div/button/img")
 
-        while (src == '' and timeout < 10):
-            driver.get(url)
-            print("driver got the url")
-            #obtain tree and search for the source which contains the source and filters for it
-            tree = html.fromstring(driver.page_source)
-            print("obtained source")
-            webelements = tree.xpath('/html/body/div/div/div/main/section[2]/div[2]/div/div/div/div/div/div/div/button/img/@src')
-            print("requested to obtain source")
-            if webelements:
-                src = webelements[0]  # Assuming there's at least one result
-                print("Source obtained!")
-                
-                # Write date and source URL to the dictionary
-                image_sources[formatted_date] = src
-                
-                # Save the updated dictionary to the JSON file
-                with open(IMAGE_SOURCE_FILE, 'w') as json_file:
-                    json.dump(image_sources, json_file)
-                print("Updated image sources saved to JSON file.")
-            else:
-                print("Failed to obtain source.")
-                timeout = timeout + 1
-        #write date and source url to dictionary
-        if timeout == 10:
-            print("request timed out")
-            return "Image request timed out"
-        else:
-            print("exited while loop successfully")
+        img_src = await page.locator("xpath=/html/body/div/div/div/main/section[2]/div[2]/div/div/div/div/div/div/div/button/img").get_attribute("src")
+        print(f"image source obtained: {img_src}")
+        await browser.close()
 
-        return src
 
 
 def obtainHeathcliffSource(formatted_date):
