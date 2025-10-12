@@ -78,10 +78,11 @@ async def webRequest(formatted_date):
         img_src = await page.locator("xpath=/html/body/div/div/div/main/section[2]/div[2]/div/div/div/div/div/div/div/button/img").get_attribute("src")
         print(f"image source obtained: {img_src}")
         await browser.close()
+        return img_src
 
 
 
-def obtainHeathcliffSource(formatted_date):
+async def obtainHeathcliffSource(formatted_date):
 
     # Check if the date requested is stored in the dictionary
     datesrc = image_sources.get(formatted_date)
@@ -90,7 +91,7 @@ def obtainHeathcliffSource(formatted_date):
         src = datesrc  # Obtain source URL from the dictionary for the date
         print("Image source obtained from the dictionary.")
     else:
-        src = webRequest(formatted_date)
+        src = await webRequest(formatted_date)
     return src
 
 
@@ -100,7 +101,7 @@ def obtainHeathcliffSource(formatted_date):
 async def send_daily_message():
     now = datetime.utcnow() #this is depreciated we should probably replace it
     formatted_date = now.strftime("%Y/%m/%d")
-    imgsrc = webRequest(formatted_date)
+    imgsrc = await webRequest(formatted_date)
     print("obtained source within the 24 hour loop")
 
     for guild_id, channel_id in channel_data.items():
@@ -203,7 +204,8 @@ async def sendnow(interaction: discord.Interaction, date: str = None):
         await interaction.response.send_message("Sending Heathcliff!")
     
     # Obtain the image source using the formatted date
-    imgsrc = obtainHeathcliffSource(formatted_date)
+    imgsrc = await obtainHeathcliffSource(formatted_date)
+    print(imgsrc)
     
     # Send the image source in a message
     await interaction.followup.send(imgsrc)
