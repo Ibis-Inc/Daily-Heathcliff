@@ -72,6 +72,7 @@ async def webRequest(formatted_date):
         browser = await p.firefox.launch(headless=True)
         page = await browser.new_page()
         await page.goto(url)
+        print("initiate browser")
 
         await page.wait_for_selector("xpath=/html/body/div/div/div/main/section[2]/div[2]/div/div/div/div/div/div/div/button/img")
 
@@ -91,6 +92,7 @@ async def obtainHeathcliffSource(formatted_date):
         src = datesrc  # Obtain source URL from the dictionary for the date
         print("Image source obtained from the dictionary.")
     else:
+        print("running web request")
         src = await webRequest(formatted_date)
     return src
 
