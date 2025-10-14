@@ -79,6 +79,18 @@ async def webRequest(formatted_date):
         img_src = await page.locator("xpath=/html/body/div/div/div/main/section[2]/div[2]/div/div/div/div/div/div/div/button/img").get_attribute("src")
         print(f"image source obtained: {img_src}")
         await browser.close()
+        if img_src:
+            src = img_src[0]  # Assuming there's at least one result
+            print("Source obtained!")
+            
+            # Write date and source URL to the dictionary
+            image_sources[formatted_date] = src
+            # Save the updated dictionary to the JSON file
+            with open(IMAGE_SOURCE_FILE, 'w') as json_file:
+                json.dump(image_sources, json_file)
+            print("Updated image sources saved to JSON file.")
+        else:
+            print("Failed to obtain source.")
         return img_src
 
 
