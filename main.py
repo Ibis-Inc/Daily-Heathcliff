@@ -5,11 +5,7 @@ import os
 from dotenv import load_dotenv
 from datetime import datetime
 import json
-from lxml import html
 import asyncio
-import timedelta
-import asyncio
-import requests
 from playwright.async_api import async_playwright
 
 
@@ -102,6 +98,24 @@ async def obtainHeathcliffSource(formatted_date):
         src = await webRequest(formatted_date)
     return src
 
+# async def waitUntil(end_hour,end_minute,end_second):
+#     print("currently: " + str(datetime.now().hour)+ ":" + str(datetime.now().minute)+ ":" + str(datetime.now().second))
+
+#     while datetime.now().hour != end_hour: 
+
+#         while datetime.now().minute != end_minute:
+
+#             while datetime.now().second != end_second:  
+                                                        
+#                 print("waiting second")                 #¦timing for the specified second
+#                 await asyncio.sleep(1)                          #¦
+
+#             print("waiting minute") #¦timing for the specified hour
+#             await asyncio.sleep(1)          #¦
+
+#         print("waiting hour") #¦timing for the specified hour
+#         await asyncio.sleep(1)       #¦
+
 
 
 
@@ -129,23 +143,21 @@ async def send_daily_message():
         except Exception as e:
             print(f"Failed to send message to {channel.mention}: {e}")
 
-@send_daily_message.before_loop
-async def before_loop():
-    print("before loop initiate")
-    # Calculate seconds until the next noon
-    seconds_until_noon = (datetime.now().replace(hour=12, minute=0, second=0, microsecond=0) + 
-                          timedelta(days=(datetime.now().hour >= 12)) - datetime.now()).total_seconds()
-    
-    # Pause the script asynchronously
-    print("honk shooah sleep on that thang")
-    await asyncio.sleep(seconds_until_noon)
-
 
 @bot.event
 async def on_ready():
     print(f"{bot.user.name} has logged in successfully")
     await bot.tree.sync()
-    send_daily_message.start()
+    print("before loop initiate")
+    end_hour = 14
+    end_minute = 57
+    end_second = 0
+    print("currently: " + str(datetime.now().hour)+ ":" + str(datetime.now().minute)+ ":" + str(datetime.now().second))
+
+    wait_seconds = (end_hour * (60*60) + end_minute * 60 + end_second) - (datetime.now().hour * (60*60) + datetime.now().minute * 60 + datetime.now().second)
+
+    await asyncio.sleep(wait_seconds)
+    send_daily_message
 
 @bot.tree.command(name='ping', description='What do you think will happen')
 async def ping(interaction: discord.Interaction):
