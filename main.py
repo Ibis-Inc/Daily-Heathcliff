@@ -149,8 +149,8 @@ async def on_ready():
     print(f"{bot.user.name} has logged in successfully")
     await bot.tree.sync()
     print("before loop initiate")
-    end_hour = 14
-    end_minute = 57
+    end_hour = 12
+    end_minute = 0
     end_second = 0
     print("currently: " + str(datetime.now().hour)+ ":" + str(datetime.now().minute)+ ":" + str(datetime.now().second))
 
