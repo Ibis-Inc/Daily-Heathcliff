@@ -147,7 +147,7 @@ async def send_daily_message():
 @bot.event
 async def on_ready():
     print(f"{bot.user.name} has logged in successfully")
-    # await bot.tree.sync()
+    await bot.tree.sync()
     # print("before loop initiate")
     # end_hour = 12
     # end_minute = 0
@@ -157,7 +157,7 @@ async def on_ready():
     # wait_seconds = (end_hour * (60*60) + end_minute * 60 + end_second) - (datetime.now().hour * (60*60) + datetime.now().minute * 60 + datetime.now().second)
 
     # await asyncio.sleep(wait_seconds)
-    send_daily_message
+    send_daily_message.start()
 
 @bot.tree.command(name='ping', description='What do you think will happen')
 async def ping(interaction: discord.Interaction):
