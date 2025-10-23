@@ -147,16 +147,16 @@ async def send_daily_message():
 @bot.event
 async def on_ready():
     print(f"{bot.user.name} has logged in successfully")
-    await bot.tree.sync()
-    print("before loop initiate")
-    end_hour = 12
-    end_minute = 0
-    end_second = 0
-    print("currently: " + str(datetime.now().hour)+ ":" + str(datetime.now().minute)+ ":" + str(datetime.now().second))
+    # await bot.tree.sync()
+    # print("before loop initiate")
+    # end_hour = 12
+    # end_minute = 0
+    # end_second = 0
+    # print("currently: " + str(datetime.now().hour)+ ":" + str(datetime.now().minute)+ ":" + str(datetime.now().second))
 
-    wait_seconds = (end_hour * (60*60) + end_minute * 60 + end_second) - (datetime.now().hour * (60*60) + datetime.now().minute * 60 + datetime.now().second)
+    # wait_seconds = (end_hour * (60*60) + end_minute * 60 + end_second) - (datetime.now().hour * (60*60) + datetime.now().minute * 60 + datetime.now().second)
 
-    await asyncio.sleep(wait_seconds)
+    # await asyncio.sleep(wait_seconds)
     send_daily_message
 
 @bot.tree.command(name='ping', description='What do you think will happen')
