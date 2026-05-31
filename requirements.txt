@@ -6,3 +6,4 @@ schedule==1.2.2
 timedelta==2020.12.3
 webdriver_manager==4.0.2
 playwright==1.55.0
+playwright-stealth==2.0.3

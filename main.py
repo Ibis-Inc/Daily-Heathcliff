@@ -3,10 +3,11 @@ from discord import app_commands
 from discord.ext import tasks, commands
 import os
 from dotenv import load_dotenv
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 import asyncio
-from playwright.async_api import async_playwright
+from playwright_stealth import Stealth
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
 
 load_dotenv()
@@ -70,35 +71,68 @@ else:
     es_image_sources = {}
 
 async def webRequest(formatted_date, lang):
-    async with async_playwright() as p:
-        if lang == "ES":
-            url = f"https://www.gocomics.com/heathcliffespanol/{formatted_date}" #forms the correct url to the page based upon the day
-        else:
-            url = f"https://www.gocomics.com/heathcliff/{formatted_date}" #forms the correct url to the page based upon the day
+    if lang == "ES":
+        url = f"https://www.gocomics.com/heathcliffespanol/{formatted_date}"
+    else:
+        url = f"https://www.gocomics.com/heathcliff/{formatted_date}"
 
-        print("beginning process to obtain image source")
-        browser = await p.firefox.launch(headless=True)
-        page = await browser.new_page()
-        await page.goto(url)
-        print("initiate browser")
-
-        await page.wait_for_selector("xpath=/html/body/div/div/div/main/section[2]/div[2]/div/div/div/div/div/div/div/button/img")
-
-        img_src = await page.locator("xpath=/html/body/div/div/div/main/section[2]/div[2]/div/div/div/div/div/div/div/button/img").get_attribute("src")
-        print(f"image source obtained: {img_src}")
+    print(f"Beginning process to obtain image source for {formatted_date}")
+    
+    #  Open the stealth execution context manager
+    async with Stealth().use_async(async_playwright()) as p:
+        
+        browser = await p.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"]
+        )
+        print("Launched invisible browser engine")
+        
+        context = await browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, Gecko) Chrome/124.0.0.0 Safari/537.36",
+            viewport={"width": 1920, "height": 1080},
+            locale="en-US"
+        )
+        
+        page = await context.new_page()
+        
+        try:
+            # Navigate using the domcontentloaded strategy to outrun heavy ad servers
+            print(f"Navigating to: {url}")
+            await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            print("Base HTML structure loaded completely")
+            
+            # Substring bypasses obfuscation
+            target_selector = "img[class*='comic__image']"
+            
+            print(f"Waiting for selector: {target_selector}")
+            await page.wait_for_selector(target_selector, timeout=15000)
+            
+            # Extract the raw source URL string
+            img_src = await page.locator(target_selector).first.get_attribute("src")
+            print(f"Image source successfully obtained: {img_src}")
+            
+        except PlaywrightTimeoutError as e:
+            print(f"Scraper error encountered tracking {formatted_date}: {e}")
+            try:
+                await page.screenshot(path="bot_error_view.png")
+                print("Saved emergency visual snapshot to 'bot_error_view.png'")
+            except Exception:
+                pass
+            await browser.close()
+            return "Error: Could not retrieve the comic image due to a layout or loading timeout."
+            
         await browser.close()
         
+        #  File-saving logic blocks
         if lang == "ES":
             es_image_sources[formatted_date] = img_src
-            # Save the updated Spanish dictionary to the JSON file
             with open(ES_IMAGE_SOURCE_FILE, 'w') as json_file:
                 json.dump(es_image_sources, json_file)
         else:
             image_sources[formatted_date] = img_src
-            # Save the updated dictionary to the JSON file
             with open(IMAGE_SOURCE_FILE, 'w') as json_file:
                 json.dump(image_sources, json_file)
-        print("Updated image sources saved to JSON file.")
+        print("Updated local image source cache dictionaries.")
         return img_src
 
 
