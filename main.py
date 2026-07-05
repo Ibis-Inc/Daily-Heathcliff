@@ -4,6 +4,7 @@ from discord.ext import tasks, commands
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
+import time
 import json
 import asyncio
 from playwright_stealth import Stealth
@@ -211,20 +212,35 @@ async def send_daily_message():
 async def on_ready():
     print(f"{bot.user.name} has logged in successfully")
     await bot.tree.sync()
-    # print("before loop initiate")
-    # end_hour = 12
-    # end_minute = 0
-    # end_second = 0
-    # print("currently: " + str(datetime.now().hour)+ ":" + str(datetime.now().minute)+ ":" + str(datetime.now().second))
-
-    # wait_seconds = (end_hour * (60*60) + end_minute * 60 + end_second) - (datetime.now().hour * (60*60) + datetime.now().minute * 60 + datetime.now().second)
-
-    # await asyncio.sleep(wait_seconds)
+    #define target time as 12:00:00 (noon) today
+    now = datetime.now()
+    target = now.replace(hour=12, minute=0, second=0, microsecond=0)
+    #if it is already past noon today, target noon tomorrow
+    if now >= target:
+        target += timedelta(days=1)
+    #calculate how many seconds to sleep
+    sleep_duration = (target - now).total_seconds()
+    print(f"Current time: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Sleeping until: {target.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Total sleep duration: {sleep_duration:.2f} seconds")
+    time.sleep(sleep_duration)
     send_daily_message.start()
 
 @bot.tree.command(name='ping', description='What do you think will happen')
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message('Pong!', ephemeral=True)
+
+#@bot.tree.command(name='time-til-hour', description='Shameless debug command')
+#async def hourcheck(interaction: discord.Interaction):
+#    # Get the current time
+#    now = datetime.now()
+#
+#    # Calculate the next hour
+#    next_hour = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+#
+#    # Calculate the time difference
+#    time_until_next_hour = next_hour - now
+#    await interaction.response.send_message(f"Time until next hour: {time_until_next_hour}", ephemeral=True)
 
 @bot.tree.command(name='set-channel', description='Use it to set where the comic is sent daily')
 @app_commands.checks.has_permissions(manage_channels=True)
